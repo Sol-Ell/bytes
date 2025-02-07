@@ -486,21 +486,17 @@ impl BytesMut {
             unsafe { ptr::write_bytes(dst, value, additional) };
         }
 
-        let additional = if let Some(additional) = new_len.checked_sub(self.len()) {
-            additional
-        } else {
-            self.truncate(new_len);
-            return;
-        };
-
-        if additional == 0 {
-            return;
+        match new_len.checked_sub(self.len()) {
+            Some(additional) => {
+                if additional != 0 {
+                    extend(self, additional, value);
+                    // SAFETY: There are at least `new_len` initialized bytes in the buffer so no
+                    // uninitialized bytes are being exposed.
+                    unsafe { self.set_len(new_len) };
+                }
+            }
+            None => self.truncate(new_len),
         }
-
-        extend(self, additional, value);
-        // SAFETY: There are at least `new_len` initialized bytes in the buffer so no
-        // uninitialized bytes are being exposed.
-        unsafe { self.set_len(new_len) };
     }
 
     /// Sets the length of the buffer.
